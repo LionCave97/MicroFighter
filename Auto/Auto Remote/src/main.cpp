@@ -7,7 +7,7 @@
 RF24 radio(7, 8);  // CE, CSN
 byte sAddresses[][6] = {"BasT","BasR"};
 
-const bool autoPair = true;
+const bool autoPair = false;
 
 //Radio Pair
 typedef struct{
@@ -18,17 +18,25 @@ pair;
 pair pairData;
 
 
-// Controller Setup
-#define rightButton 2
-boolean rightbuttonState;
-#define leftButton 4
-boolean leftbuttonState;
+
 
 // Controller Ports
-int leftSlider = A1;
-int leftValue = 0;
-int rightSlider = A0;
-int rightValue = 0;
+int leftBtn = A2;
+bool leftValue = 0;
+int rightBtn = A3;
+bool rightValue = 0;
+int upBtn = A0;
+bool upValue = 0;
+int downBtn = A1;
+bool downValue = 0;
+
+int actionBtn = A4;
+bool actionValue = 0;
+int boostBtn = A5;
+bool boostValue = 0;
+
+int leftSpeed = 0;
+int rightSpeed = 0;
 
 int red_light_pin= 6;
 int green_light_pin = 5;
@@ -74,21 +82,97 @@ void pairNow(){
 
 void getController(){
   //Serial.println("Get controls");
-  pairbuttonState = !digitalRead(pairButton);
-  rightbuttonState = !digitalRead(rightButton);
-  leftbuttonState = !digitalRead(leftButton);
-  leftValue = analogRead(leftSlider);
-  rightValue = analogRead(rightSlider);  
-  //Serial.println(rightbuttonState);
+  // pairbuttonState = !digitalRead(pairButton);
+  // rightbuttonState = !digitalRead(rightButton);
+  // leftbuttonState = !digitalRead(leftButton);
+  // leftValue = analogRead(leftBtn);
+  // rightValue = analogRead(rightSlider);  
+  
+
+  if (analogRead(leftBtn) <= 100)
+  {
+    leftValue = true;
+  }else{
+    leftValue = false;
+  }
+  if (analogRead(rightBtn)<= 100)
+  {
+    rightValue = true;
+  }else{
+    rightValue = false;
+  }
+  if (analogRead(upBtn) <= 100)
+  {
+    upValue = true;
+  }else{
+    upValue = false;
+  }
+  if (analogRead(downBtn) <= 100)
+  {
+    downValue = true;
+  }else{
+    downValue = false;
+  }
+
+  if (analogRead(actionBtn) <= 100)
+  {
+    actionValue = true;
+  }else{
+    actionValue = false;
+  }
+    if (analogRead(boostBtn) <= 100)
+  {
+    boostValue = true;
+  }else{
+    boostValue = false;
+  }
+  // Serial.println(analogRead(rightBtn));
+
+  // Serial.println(analogRead(boostBtn));
+  // Serial.println(analogRead(upBtn));
+  // Serial.println(upValue);
+  // Serial.println(downValue);
   // Serial.println(leftValue);
+
+  leftSpeed = 0;
+  rightSpeed = 0;
+
+  if (upValue)
+  {
+    leftSpeed = 90;
+    rightSpeed = 90;
+  }
+  if (downValue)
+  {
+    leftSpeed = 50;
+    rightSpeed = 50;
+  }
+
+  if (leftValue)
+  {
+    leftSpeed = 50;
+    rightSpeed = 90;
+  }
+
+  if (rightValue)
+  {
+    leftSpeed = 90;
+    rightSpeed = 50;
+  }
+
+  Serial.println(leftSpeed);
+  Serial.println(rightSpeed);
+
+
+  
 }
 
 void sendData(){
-  ctrlData.leftTrigger = leftbuttonState;
-  ctrlData.rightTrigger = rightbuttonState;  
-  ctrlData.leftSpeed = map(leftValue, 4, 708, 0, 180);
-  ctrlData.rightSpeed = map(rightValue, 4, 708, 0, 180);
-  //Serial.println(ctrlData.rightTrigger);
+  ctrlData.leftTrigger = actionValue;
+  ctrlData.rightTrigger = boostValue;  
+  ctrlData.leftSpeed = leftSpeed;
+  ctrlData.rightSpeed = rightSpeed;
+  Serial.println(ctrlData.rightTrigger);
   radio.write( &ctrlData, sizeof(ctrlData) );
 
 }
@@ -109,13 +193,15 @@ void setup() {
     Serial.println("Auto Pair");
   } 
 
-  pinMode(rightButton,INPUT_PULLUP);
-  pinMode(leftButton,INPUT_PULLUP);
+  pinMode(actionBtn,INPUT_PULLUP);
+  pinMode(boostBtn,INPUT_PULLUP);
   pinMode(pairButton,INPUT_PULLUP);
 
-  pinMode(red_light_pin, OUTPUT);
-  pinMode(green_light_pin, OUTPUT);
-  pinMode(blue_light_pin, OUTPUT);
+  pinMode(leftBtn,INPUT_PULLUP);
+  pinMode(rightBtn,INPUT_PULLUP);
+  pinMode(upBtn,INPUT_PULLUP);
+  pinMode(downBtn,INPUT_PULLUP);
+
 
   //radio.setPALevel(RF24_PA_LOW); //Default Max Power
 
@@ -125,15 +211,15 @@ void loop() {
   getController();
   if (pairbuttonState)
   {
-    RGB_color(0, 0, 255); // Blue
+    // RGB_color(0, 0, 255); // Blue
     pairNow();
   }
   
   if (!pairData.paired)
   { 
-    RGB_color(255, 0, 0); // Red
+    // RGB_color(255, 0, 0); // Red
   }else {
-    RGB_color(255, 255, 255); // White
+    // RGB_color(255, 255, 255); // White
     sendData();  
   }
   
