@@ -7,17 +7,15 @@
 RF24 radio(7, 8);  // CE, CSN
 byte sAddresses[][6] = {"BasT","BasR"};
 
-const bool autoPair = false;
+const bool autoPair = true;
 
 //Radio Pair
 typedef struct{
-  int id = 1; // Each student will receive a id number
+  int id = 0; // Each student will receive a id number
   bool paired = false;
 }
 pair;
 pair pairData;
-
-
 
 
 // Controller Ports
@@ -39,10 +37,10 @@ int leftSpeed = 0;
 int rightSpeed = 0;
 
 int red_light_pin= 6;
-int green_light_pin = 5;
-int blue_light_pin = 3;
+int green_light_pin = 10;
+int blue_light_pin = 9;
 
-#define pairButton 10
+int pairButton= 2;
 boolean pairbuttonState;
 
 //Controller Data
@@ -62,14 +60,24 @@ void RGB_color(int red_light_value, int green_light_value, int blue_light_value)
 }
 
 void pairNow(){
+  delay(500);
+  pairData.id = 0;
+  pairData.paired = false;
   radio.begin();
   radio.setChannel(1);
   radio.stopListening();
   radio.openReadingPipe(1, sAddresses[0]);
   radio.startListening();
   radio.write( &pairData, sizeof(pairData) );  
-  if (radio.available())
+
+    while (!radio.available())
     {
+      Serial.println("No signal");    
+    }
+
+    if (radio.available())
+    {
+      pairbuttonState = false;
       Serial.println("Received");
       radio.read(&pairData, sizeof(pairData));
       Serial.println(pairData.id);
@@ -78,16 +86,13 @@ void pairNow(){
       radio.stopListening();
       radio.openWritingPipe(sAddresses[0]);      
     }
+  
 }
 
 void getController(){
   //Serial.println("Get controls");
-  // pairbuttonState = !digitalRead(pairButton);
-  // rightbuttonState = !digitalRead(rightButton);
-  // leftbuttonState = !digitalRead(leftButton);
-  // leftValue = analogRead(leftBtn);
-  // rightValue = analogRead(rightSlider);  
-  
+   pairbuttonState = !digitalRead(pairButton);
+ 
 
   if (analogRead(leftBtn) <= 100)
   {
@@ -132,10 +137,12 @@ void getController(){
   // Serial.println(analogRead(upBtn));
   // Serial.println(upValue);
   // Serial.println(downValue);
-  // Serial.println(leftValue);
+   //Serial.println(leftValue);
 
   leftSpeed = 0;
   rightSpeed = 0;
+
+  
 
   if (upValue)
   {
@@ -160,8 +167,8 @@ void getController(){
     rightSpeed = 50;
   }
 
-  Serial.println(leftSpeed);
-  Serial.println(rightSpeed);
+  //Serial.println(leftSpeed);
+  // Serial.println(rightSpeed);
 
 
   
@@ -172,7 +179,7 @@ void sendData(){
   ctrlData.rightTrigger = boostValue;  
   ctrlData.leftSpeed = leftSpeed;
   ctrlData.rightSpeed = rightSpeed;
-  Serial.println(ctrlData.rightTrigger);
+  // Serial.println(ctrlData.rightTrigger);
   radio.write( &ctrlData, sizeof(ctrlData) );
 
 }
@@ -202,7 +209,14 @@ void setup() {
   pinMode(upBtn,INPUT_PULLUP);
   pinMode(downBtn,INPUT_PULLUP);
 
+  pinMode(red_light_pin,OUTPUT);
+  pinMode(green_light_pin,OUTPUT);
+  pinMode(blue_light_pin,OUTPUT);
 
+
+  //pairbuttonState = true;
+
+    RGB_color(255, 0, 0); // Red
   //radio.setPALevel(RF24_PA_LOW); //Default Max Power
 
 }
@@ -211,15 +225,20 @@ void loop() {
   getController();
   if (pairbuttonState)
   {
-    // RGB_color(0, 0, 255); // Blue
+    pairData.paired = false;
+    Serial.println("Pair");
+    RGB_color(0, 0, 255); // Blue
     pairNow();
   }
   
   if (!pairData.paired)
   { 
-    // RGB_color(255, 0, 0); // Red
+    Serial.println("Not Paired");
+
+    RGB_color(255, 0, 0); // Red
   }else {
-    // RGB_color(255, 255, 255); // White
+    // Serial.println("Paired");
+    RGB_color(255, 255, 255); // White
     sendData();  
   }
   

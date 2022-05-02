@@ -8,11 +8,11 @@
 RF24 radio(7, 8);  // CE, CSN
 byte sAddresses[][6] = {"BasT","BasR"};
 
-const bool autoPair = false;
+const bool autoPair = true;
 
 //Radio Pair
 typedef struct{
-  int id = 1; // Each student will receive a id number
+  int id = 105; // Each student will receive a id number
   bool paired = false;
 }
 pair;
@@ -27,12 +27,22 @@ int rightForward = A2;
 int rightBackward = A3;
 int rightPWM = 9;
 
+int leftSpeed = 60;
+int rightSpeed = 60;
+bool boosting = 0;
+unsigned long boostTime = 5000;
+unsigned long boostRecharge = 5000;
+unsigned long previousTime = 0;
+
+int ledBoostRecharge = 1;
+
 int weapon1 = 4;
 int weapon2 = 2;
+
 //Controller Data
 typedef struct{
-  int leftSpeed = 10;   // debug value
-  int rightSpeed = 90;
+  int leftSpeed = 0;   // debug value
+  int rightSpeed = 0;
   bool leftTrigger = 0;
   bool rightTrigger = 0;
 }
@@ -45,6 +55,7 @@ void pairNow(){
   // radio.openReadingPipe(1, sAddresses[0]);
   radio.openWritingPipe(sAddresses[0]);  
   radio.stopListening();
+  radio.setPALevel(RF24_PA_LOW); //Default Max Power
   // radio.setDataRate( RF24_250KBPS );
   radio.setRetries(3,5); // delay, count
   // radio.startListening();
@@ -66,7 +77,7 @@ void pairNow(){
     else {
         Serial.println("  Tx failed");
     }
-
+  
 }
 
 void setup() {
@@ -98,11 +109,11 @@ void setup() {
     Serial.println("Auto Pair");
   } 
 
-  //radio.setPALevel(RF24_PA_LOW); //Default Max Power
 
 }
 
 void loop() {
+  unsigned long currentTime = millis();
   if (!pairData.paired)
   {
     pairNow();
@@ -111,7 +122,7 @@ void loop() {
     {
       // Serial.println("Received");
       radio.read(&ctrlData, sizeof(ctrlData));
-      Serial.println(ctrlData.leftSpeed);
+      // Serial.println(ctrlData.leftSpeed);
       // Serial.println(ctrlData.rightSpeed);
       // Serial.println(ctrlData.leftTrigger);
       // Serial.println(ctrlData.rightTrigger);
@@ -155,16 +166,50 @@ void loop() {
       }
       if (ctrlData.rightTrigger)
       {
-      Serial.println("Boost");
+        if (currentTime <= previousTime ) {
+          /* Event code */
+          Serial.println("Recharging!");
 
-        digitalWrite(leftPWM, HIGH);
-        digitalWrite(rightPWM, HIGH);
-      } else{
-        digitalWrite(leftPWM, LOW);
-        digitalWrite(rightPWM, LOW);
+        } else
+        {
+        
+          Serial.println("Boost");
+          boosting = 1;
+          previousTime = currentTime;
+          }
+      } 
+
+      if (boosting){
+        
+        
+        // Serial.println("check boost");
+        Serial.println(currentTime);
+        Serial.println(previousTime);
+        Serial.println(currentTime-previousTime);
+
+        /* This is the event */
+        if (currentTime - previousTime <= boostTime) {
+          /* Event code */
+          Serial.println("Boosting!");
+          
+        /* Update the timing for the next time around */
+          // previousTime = currentTime;
+          leftSpeed = 100;
+          rightSpeed = 100;
+        } else
+        {
+          Serial.println("Boosting done");
+          leftSpeed = 60;
+          rightSpeed = 60;
+          boosting = 0;
+          previousTime = currentTime + boostRecharge;
+        }
+        
       }
 
-      
+      analogWrite(leftPWM, map(leftSpeed, 0, 100, 0, 255));
+      analogWrite(rightPWM, map(rightSpeed, 0, 100, 0, 255));
+
     }
 
   }
